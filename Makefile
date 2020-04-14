@@ -21,7 +21,8 @@ csvs := $(pdfs:%.pdf=.%.csv)
 all: $(REPORT)
 
 $(REPORT): $(csvs)
-	@$(MERGE) $^ > $@
+	@printf "%6s, %7s, %20s, %20s\n" code unit 2019 2018 > $@
+	@$(MERGE) $^ >> $@
 
 %.csv: %.txt $(MAKEFILE_LIST)
 	@$(FILTER) $< > $@
