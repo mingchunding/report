@@ -30,8 +30,8 @@ $(REPORT): $(csvs)
 %.csv: %.txt $(MAKEFILE_LIST)
 	@$(FILTER) $< > $@
 
-%.txt: PDF_FLAGS := -raw
-#%.txt: PDF_FLAGS := -layout
+#%.txt: PDF_FLAGS := -raw
+%.txt: PDF_FLAGS := -layout
 .%.txt: %.pdf
 	@echo "Converting $< ... "
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@

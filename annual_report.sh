@@ -27,21 +27,40 @@ function parser1()
 		unit=1000000
 		;;
 		*)
-		echo "unrecongnized unit: $unit in file $1" > $debug
+		echo "unrecongnized unit: $unit in file $1" > $2
 		unit=1
 		;;
 	esac
 
 	line=$($SED -nE "/$loc1/,\${/$loc2/{=;q}}" $1)
-	echo "Line #$line in file $1" > $debug
+	echo "Line #$line in file $1" > $2
 	cmd="$line{{/\.\$/N;s/\n//};/[0-9]\$/{N;s/\n[^0-9].*//;s/\n/ /};s/^ *//;s/ +/ /g;p;q;}"
 	d=$(${SED} -nE "$cmd" $1)
-	echo $d > $debug
+	echo $d > $2
 	incoming1=$(echo "$d" | cut -d' ' -f2)
 	incoming2=$(echo "$d" | cut -d' ' -f3)
 	incoming_incr_rate=$(echo "$d" | cut -d' ' -f4)
 }
 
-parser1 $1
+function parser2()
+{
+	loc1="扣除非(经常性损益后|經常性損益後)的"
+	cmd="/$loc1/{/[^0-9]\$/{N;s/\n//};s/^ *//;s/ +/ /g;p;q}"
+	d=$(${SED} -nE "$cmd" $1)
+	printf "%-25s 0: %s\n" $1 "$d" > $2
+	incpp=$(echo "$d" | cut -d' ' -f2)
+	[[ "x$incpp" != "x" ]] && return
 
-printf "%s, %7s, %20s, %20s\n" ${code/\./} $unit ${incoming1//,/} ${incoming2//,/} 
+	loc1="(稀释|稀釋)每股收益"
+	cmd="/$loc1/{s/^ *//;s/ +/ /g;p;q}"
+	d=$(${SED} -nE "$cmd" $1)
+	printf "%-25s 1: %s\n" $1 "$d" > $2
+	incpp=$(echo "$d" | cut -d' ' -f2)
+}
+
+parser1 $1 /dev/null
+parser2 $1 $debug
+
+dt=${1#*_}
+dt=${dt%.*}
+printf "%s, %8s, %7s, %20s, %20s, %10s\n" ${code/\./} ${dt%%_*} $unit ${incoming1//,/} ${incoming2//,/} $incpp
