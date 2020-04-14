@@ -18,6 +18,9 @@ pdfs := $(wildcard *.pdf)
 text := $(pdfs:%.pdf=.%.txt)
 csvs := $(pdfs:%.pdf=.%.csv)
 
+text_exist := $(wildcard .*.txt)
+csvs_exist := $(wildcard .*.csv)
+
 all: $(REPORT)
 
 $(REPORT): $(csvs)
@@ -30,6 +33,7 @@ $(REPORT): $(csvs)
 %.txt: PDF_FLAGS := -raw
 #%.txt: PDF_FLAGS := -layout
 .%.txt: %.pdf
+	@echo "Converting $< ... "
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
 
 %.pdf:
@@ -38,5 +42,9 @@ $(REPORT): $(csvs)
 
 clean:
 	@rm -rf .*.csv .*.txt
+
+miss:
+	@echo "Missed txt files: $(filter-out $(text_exist), $(text))"
+	@echo "Missed csv files: $(filter-out $(csvs_exist), $(csvs))"
 
 .SECONDARY: $(text)
