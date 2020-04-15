@@ -29,6 +29,8 @@ csvs := $(pdfs:%.pdf=.%.csv)
 text_exist := $(wildcard .*.txt)
 csvs_exist := $(wildcard .*.csv)
 
+nfiles := $(words $(pdfs))
+
 all: $(REPORT)
 
 $(REPORT): $(csvs)
@@ -41,7 +43,7 @@ $(REPORT): $(csvs)
 #%.txt: PDF_FLAGS := -raw
 %.txt: PDF_FLAGS := -q -layout
 .%.txt: %.pdf
-	@echo "Converting $< ... "
+	@echo "[$$(($$(ls -1 .*.txt | wc -l) + 1))/$(nfiles)] Converting $< ... "
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
 	@sed -iE '/ *$$\|^[ 0-9\/]*$$/d' $@
 
