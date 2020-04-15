@@ -51,6 +51,16 @@ function parser2()
 	done
 }
 
+function parser3()
+{
+	d=$($SED -nE '/公司简称：/{=;s/.*公司简称： *([^\b]+)$/\1/;p;q}' $1)
+	line=$(echo "$d" | $SED -n '1p')
+	[[ -z $line ]] && line=0
+	[[ $line -gt 0 ]] && d=$(echo "$d" | $SED -n '$p') || d="None"
+	printf "%-25s +%.8d: %s\n" $1 $line "$d" > $2
+	val[$idx]=\"$d\" && idx=$(expr $idx + 1)
+}
+
 code=${1%%_*}
 dt=${1#*_}
 dt=${dt%.*}
@@ -59,5 +69,6 @@ val[$idx]=${dt%%_*} 		&& idx=$(expr $idx + 1)
 
 parser1 $1 /dev/null #$debug #
 parser2 $1 /dev/null #$debug #
+parser3 $1 $debug #/dev/null #
 
 echo ${val[@]} | xargs printf "${LINE_FORMAT}\n"
