@@ -5,6 +5,14 @@ FILTER  := $(shell which report)
 REPORT	:= report.csv
 MERGE	:= cat
 
+HEADER		:= code date unit 2019  2018  rate
+LINE_FORMAT 	:= %6s, %8s, %7s, %20s, %20s, %10s
+export LINE_FORMAT
+
+ifneq ($(words $(LINE_FORMAT)),$(words $(HEADER)))
+$(error HEADER format and NAME string mismatch.)
+endif
+
 ifeq ($(PDF2TXT),)
 $(error pdftotext not found.)
 endif
@@ -24,11 +32,11 @@ csvs_exist := $(wildcard .*.csv)
 all: $(REPORT)
 
 $(REPORT): $(csvs)
-	@printf "%6s, %7s, %20s, %20s\n" code unit 2019 2018 > $@
+	@echo $(HEADER) | xargs printf "$(LINE_FORMAT)\n"  > $@
 	@$(MERGE) $^ >> $@
 
-%.csv: %.txt $(MAKEFILE_LIST)
-	@$(FILTER) $< > $@
+%.csv: %.txt $(MAKEFILE_LIST) $(FILTER)
+	@$(FILTER) $< $(VERBOSE) > $@
 
 #%.txt: PDF_FLAGS := -raw
 %.txt: PDF_FLAGS := -layout
