@@ -22,7 +22,7 @@ FILTER := $(wildcard ./annual_report.sh)
 $(warning $(FILTER) is used.)
 endif
 
-pdfs := $(wildcard *.pdf)
+pdfs := $(sort $(wildcard *.pdf))
 text := $(pdfs:%.pdf=.%.txt)
 csvs := $(pdfs:%.pdf=.%.csv)
 
