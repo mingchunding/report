@@ -56,9 +56,22 @@ function parser3()
 	d=$($SED -nE '/公司简称：/{=;s/.*公司简称： *([^\b]+)$/\1/;p;q}' $1)
 	line=$(echo "$d" | $SED -n '1p')
 	[[ -z $line ]] && line=0
-	[[ $line -gt 0 ]] && d=$(echo "$d" | $SED -n '$p') || d="None"
+	[[ $line -gt 0 ]] && d=$(echo "$d" | $SED -n '$p') || d="N/A"
 	printf "%-25s +%.8d: %s\n" $1 $line "$d" > $2
 	val[$idx]=\"$d\" && idx=$(expr $idx + 1)
+}
+
+function parser4()
+{
+	#p="每([0-9]*股)(现金分红为|派发?送?發?現?现?金?红?股?利?息?含?税?不?低?于?人?民?币?约?|分配现金股利)"
+	p="每(.*股)(现金分红为|派[发送發現现金分红股利息含税不低于人民币约]+|分配现金股利)"
+	d=$($SED -nE '/'$p'/{/送红股|股送红/q;N;N;s/[ \n]*//g;{/[0-9\.]+ *元/!q};s/.*('$p')([0-9\.]+)*(元).*/\1 \4 \5/;=;p;q}' $1)
+	line=$(echo "$d" | $SED -n '1p')
+	d=$(echo "$d" | $SED -n '$p')
+	[[ -z "$line" ]] && line=0 || line=$(($line -2 ))
+	[[ $line -gt 0 ]] && v=$(echo "$d" | cut -d' ' -f2) || v=0
+	printf "%-25s +%.8d: %s\n" $1 $line "$d" >> $2
+	val[$idx]=$v && idx=$(expr $idx + 1)
 }
 
 code=${1%%_*}
@@ -69,6 +82,7 @@ val[$idx]=${dt%%_*} 		&& idx=$(expr $idx + 1)
 
 parser1 $1 /dev/null #$debug #
 parser2 $1 /dev/null #$debug #
-parser3 $1 $debug #/dev/null #
+parser4 $1 $debug
+parser3 $1 /dev/null #$debug #
 
 echo ${val[@]} | xargs printf "${LINE_FORMAT}\n"
