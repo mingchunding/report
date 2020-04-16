@@ -6,7 +6,7 @@ REPORT	:= report.csv
 MERGE	:= cat
 
 HEADER		:= code date unit 2019  2018  rate  profit name
-LINE_FORMAT 	:= %6s, %8s, %7s, %20s, %20s, %10s, %6s,   %-20s
+LINE_FORMAT 	:= %6s, %8s, %7s, %20s, %20s, %10s, %8s,   %-20s
 export LINE_FORMAT
 
 ifneq ($(words $(LINE_FORMAT)),$(words $(HEADER)))

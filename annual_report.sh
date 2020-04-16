@@ -63,18 +63,38 @@ function parser3()
 
 function parser4()
 {
-	p="每(.*股)([派发送發現现金分配红为股利息含税不低于人民币约]{2,})"
-	d=$($SED -nE '1,/主要(会计|财务)数据/{
-		/'$p'|股权登记日|全体股东|每.*股/{
-			x;n;{/^/!H};x;N
-			s/[ \n]*//g
-			/'$p'[0-9\.]+元/{s/.*('$p')([0-9\.]+)(元).*/\1 \4 \5/;=;p;q}
-		}}' $1)
+	[[ $? -gt 2 ]] && log=$3 || log=$(mktemp -u)
+	p="每(.*股)[派发送發現现金分配红为股利息含税不低于人民币约]*"
+	d=$($SED -nE '1,/主要(会计|财务)数据/{	# limit searching range
+		/'$p'|股权登记日|全体股东/{	# match specified line by pattern
+			x			# exchange current and staging
+			n			# read next line
+			{/^/!H}		# append current to staging if not footer (bigenning with ^L ?)
+			x			# exchange current and staging
+			N			# append new line to current
+			s/[ \n]*//g		# delete all blanks and line break
+			w '$log${1##*/}'
+			/'$p'[0-9\.]+元/{	# match searching pattern
+				s/.*('$p')([0-9\.]+)(元).*/\1 \3 \4/ 	# trim characters and transform
+				=		# print line number
+				#w '$log${1##*/}'
+				p		# print contents
+				q		# quit
+			}
+		}
+	}' $1)
 	line=$(echo "$d" | $SED -n '1p')
 	d=$(echo "$d" | $SED -n '$p')
 	[[ -z "$line" ]] && line=0 || line=$(($line -2 ))
 	[[ $line -gt 0 ]] && v=$(echo "$d" | cut -d' ' -f2) || v=0
-	printf "%-25s +%.8d: %s\n" $1 $line "$d" >> $2
+
+	printf "%-25s +%.8d: %s\n" $1 $line "${d}" > $2
+
+	case ${d:1:2} in
+		10|十股) ;;
+		*) [[ ! -z "$d" ]] && v=$v*10;;
+	esac
+
 	val[$idx]=$v && idx=$(expr $idx + 1)
 }
 
@@ -86,7 +106,7 @@ val[$idx]=${dt%%_*} 		&& idx=$(expr $idx + 1)
 
 parser1 $1 /dev/null #$debug #
 parser2 $1 /dev/null #$debug #
-parser4 $1 $debug
+parser4 $1 $debug    # a.txt
 parser3 $1 /dev/null #$debug #
 
 echo ${val[@]} | xargs printf "${LINE_FORMAT}\n"
