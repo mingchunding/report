@@ -45,7 +45,7 @@ $(REPORT): $(csvs)
 .%.txt: %.pdf
 	@echo "[$$(($$(ls -1 .*.txt | wc -l) + 1))/$(nfiles)] Converting $< ... "
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
-	@sed -iE '/ *$$\|^[ 0-9\/]*$$/d' $@
+	@sed -Ei '/\W*$$|^[ 0-9\/]*$$/d' $@
 
 %.pdf:
 	@echo "No command to download $@"
