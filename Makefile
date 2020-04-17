@@ -38,24 +38,29 @@ $(REPORT): $(csvs)
 	@$(MERGE) $^ >> $@
 
 %.csv: %.txt $(MAKEFILE_LIST) $(FILTER)
+	@printf "[%3d%%] \e[0;32mAnalysing %s\e[m\n" $$((($$(ls -1 .*.csv 2>/dev/null | wc -l) + 1) * 100 / $(nfiles))) $<
 	@$(FILTER) $< $(VERBOSE) > $@
 
 #%.txt: PDF_FLAGS := -raw
 %.txt: PDF_FLAGS := -q -layout
 .%.txt: %.pdf
-	@echo "[$$(($$(ls -1 .*.txt | wc -l) + 1))/$(nfiles)] Converting $< ... "
+	@printf "[%3d%%] \e[0;32mConverting %s\e[m\n" $$((($$(ls -1 .*.txt 2>/dev/null | wc -l) + 1) *100 / $(nfiles))) $<
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
 	@sed -Ei '/\W*$$|^[ 0-9\/]*$$/d' $@
 
 %.pdf:
 	@echo "No command to download $@"
-	@false
+	@true
 
 clean:
-	@rm -rf .*.csv .*.txt
+	@rm -rf .*.csv
+
+distclean: clean
+	@rm -rf .*.txt
 
 miss:
 	@echo "Missed txt files: $(filter-out $(text_exist), $(text))"
 	@echo "Missed csv files: $(filter-out $(csvs_exist), $(csvs))"
 
+.PHONY: clean distclean
 .SECONDARY: $(text)
