@@ -13,7 +13,7 @@ idx=0
 
 function parser1()
 {
-	log=$1.sed
+	log=$1.1.sed
 
 	loc1='主要(会计数据和财务指标|會計數據和財務指標|财务数据)'
 	loc2='(营业|營業)收入'
@@ -147,8 +147,16 @@ function parser2()
 			'"$TRIM_BLANKS"'
 			p;q;};$=
 		' $1))
-		[[ $# -gt 1 ]] && printf "%-25s +%.8d: %s\n" $1 ${d[0]} "`echo ${d[@]:1}`" >> $2
-		[[ ${#d[@]} -gt 2 ]] && val[$idx]=${d[2]} && idx=$(expr $idx + 1) && return
+
+		FORMAT="%-25s +%.8d: %-*s"
+		for ((i=2; i<${#d[@]}; i++)) do
+			FORMAT="${FORMAT} %10s"
+		done
+		d[1]=${d[1]/╱/／}
+		d=(${d[0]} $((42 + ${#d[1]})) ${d[@]:1})
+		[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[@]} >> $2
+
+		[[ ${#d[@]} -gt 3 ]] && val[$idx]=${d[3]} && idx=$(expr $idx + 1) && return
 	done
 }
 
@@ -164,24 +172,31 @@ function parser3()
 
 function parser4()
 {
-	[[ $# -gt 2 ]] && log=$3 || log=$(mktemp -u)
+	log=$1.4.sed
 	p="[派发送發現现金分配红为股利息含税不低于人民币约]"
 	d=($($SED -nE '/主要(会计|财务)数据/q		# searching till here
 		/^/b					# ignore line if footer (begin with ^L ?)
 		H;x					# append and exchange staging with current line
 		s/[ \n]*//g				# delete all blanks and line break
 		/每.{0,2}股'$p'*[0-9\.]+元/!t		# mismatch searching pattern
-		#w '${log}2${1##*/}'
+		w '${log}'
 		s/.*(每.{0,2}股'$p'*)([0-9\.]+)(元).*/\1 \2 \3/ 	# transform
 		=					# print line number
 		p					# print searching result
-		#w '${log}${1##*/}'
+		w '${log}'
 		q					# quit
 	' $1))
 
-	[[ $# -gt 1 ]] && printf "%-25s +%.8d: %s\n" $1 ${d[0]:-0} "`echo ${d[@]:1}`" >> $2
-	[[ ${#d[@]} -gt 2 ]] && v=${d[2]} && \
-	case ${d[1]:1:2} in
+	FORMAT="%-25s +%.8d:"
+	if [ ${#d[@]} -gt 1 ]; then
+		w=${d[1]//[0-9]/}
+		w=$((${#w} + 24))		# plus max len of UTF-8 Characters
+		d=(${d[0]} $w ${d[@]:1})
+		FORMAT="${FORMAT} %-*s %6s %s"
+	fi
+	[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[@]} >> $2
+	[[ ${#d[@]} -gt 3 ]] && v=${d[3]} && \
+	case ${d[2]:1:2} in
 		10|十股) ;;
 		*) v=$v*10;;
 	esac || v=0
@@ -189,8 +204,9 @@ function parser4()
 	val[$idx]=$v && idx=$(expr $idx + 1)
 }
 
-code=${1%%_*}
-dt=${1#*_}
+f=${1##*/}
+code=${f%%_*}
+dt=${f#*_}
 dt=${dt%.*}
 val[$idx]=${code#.} 		&& idx=$(expr $idx + 1)
 val[$idx]=${dt%%_*} 		&& idx=$(expr $idx + 1)

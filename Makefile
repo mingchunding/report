@@ -67,7 +67,10 @@ $(REPORT): $(csvs)
 	@echo "No command to download $@"
 	@true
 
-%.txt.sed: %.csv FORCE
+%.txt.1.sed: %.csv FORCE
+	cat $@
+
+%.txt.4.sed: %.csv FORCE
 	cat $@
 
 clean:
