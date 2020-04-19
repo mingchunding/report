@@ -11,8 +11,8 @@ else
 SED	:= $(shell which sed)
 endif
 
-REPORT_HEADER		:= code date unit 2019  2018  rate  profit name
-LINE_FORMAT 	:= %6s, %8s, %7s, %20s, %20s, %10s, %8s,   %-20s
+REPORT_HEADER	:= code date unit 2019  2018  rate  profit name
+LINE_FORMAT 	:= %6s, %8s, %7s, %20s, %20s, %10s, %8s,   %s
 export LINE_FORMAT
 
 LOG_HEADER_FORMAT:= %-25s  %8s  %6s %-8s %20s %20s %20s  %7s %20s
@@ -59,7 +59,7 @@ $(REPORT): $(csvs)
 .%.txt: %.pdf
 	@printf "[%3d%%] \e[0;32mConverting %s\e[m\n" $$((($$(ls -1 .*.txt 2>/dev/null | wc -l) + 1) *100 / $(nfiles))) $<
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
-	@sed -Ei '/ {10,}|^[ 0-9\/]*$$/d' $@
+	@$(SED) -Ei '/ {10,}|^[ 0-9\/]*$$/d' $@
 
 %.pdf:
 	@echo "No command to download $@"

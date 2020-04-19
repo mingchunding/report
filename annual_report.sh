@@ -6,6 +6,7 @@ debug=${2:-/dev/null}
 
 JOIN_LINE_FOR_NDIGIT='/[^0-9]$/{N;s/\n//}'
 JOIN_LINES_BY_DIGITS='/[0-9]$/{N;s/\n[^0-9].*//;s/\n/ /}'
+RM_LABEL_DIGIT='s/([^0-9 ]) [0-9]([^0-9])/\1  \2/'
 TRIM_BLANKS='s/^ *//;s/ +/ /g'
 val={}
 idx=0
@@ -20,50 +21,79 @@ function parser1()
 	th2='([ 本期比上年同期增减]*[0-9]{4}){2,}'
 	th3='[0-9]{4} *年末? *本期'
 	th4='(.+ 调整[前后]){2,}'
+	inps0='扣除非(经|經)常性(损益后|損益後)[的基]'
+	inps1='扣除非经經常性损益后損益後的基本每股收益\(（元／\/股）\)'
+	inps2='稀(释|釋)每股收益'
 #	year=$($SED -nE "/$loc1/,\${/[0-9]{4} *年/{s/([0-9]{4} *年).*/\1/;p;q}}" $1)
 
 	d=($($SED -nE '/'$loc1'/,${
-		:a
+		:r0
 		/[单單位：人民币:百千万]+ *元/{
-			x;/^$/!{x;bb}
-			g
-			/：\$/{N;s/\n//}
-			s/ *//g
-#			w '$log'
-			s/.*[单單位：人民币:]+(\w*元).*/\1/
 			x
+			/^$/!{x;br1};g			# skip when hold space is not empty
+			/：\$/{N;s/\n//}		# append next line
+			s/ +//g				# strip blanks
+#			w '$log'
+			s/.*[单單位：人民币:]+(.*元).*/\1/
+			x				# retrieve origin and continue others
 		}
-		:b
+		:r1
 		/'"$th1"'|'"$th2"'|'"$th3"'|'"$th4"'/{
-			:b1
-			/[单單位：人民币:]+\w*元/{
+#			x;/^:r3$/{x;br3};x
+			:r1a
 ## workaround to parse unit inside table header
+			/[单單位：人民币:]+.*元/{
 				x
 				/^$/{
 					g
 					/：\$/{N;s/\n//}
 					s/ *//g
 #					w '$log'
-					s/.*[单單位：人民币:]+(\w*元).*/\1/
+					s/.*[单單位：人民币:]+(.*元).*/\1/
 				}
 				x
 			}
 			w '$log'
 			n
-			/ +[本期比上年同期增减\(（%）\)]+$/bb1
-			ba
+			/ +[本期比上年同期增减\(（%）\)]+$/br1a
+			br0
 		}
 		/'${loc2}'/{
-			=
-			x;/^$/s/.*/未知/
+			x				# exchange origin in current and unit in hold space
+			/^:r3$/{x;br3}			# goto next field
+			/^$/s/.*/未知/			# unit is not found
+			=				# print line number
 			w '$log'
-			p;x
-			/\.\$/N;s/\n//
-			'"$JOIN_LINES_BY_DIGITS"'
-			'"$TRIM_BLANKS"'
-			s/（.*）//g
+			p;x				# print unit and retrieve origin line
+			/\.\$/N;s/\n//			# append one more line when end with "."
+			'"$JOIN_LINES_BY_DIGITS"'	# append one more line when end with number
+			'"$TRIM_BLANKS"'		# strip useless blanks
+			s/（.*）//g			# strip comments
 			w '$log'
-			p
+			p				# print current contents
+			s/^.*$/:r3/			# mark flag to next step
+			x				# save flag to hold space
+			b				# branch to end of script to continue
+		}
+		:r3
+		/'"${inps0}"'/{
+			'"${RM_LABEL_DIGIT}"'
+			'"${JOIN_LINE_FOR_NDIGIT}"'
+			s/^ +//
+			x
+			:r3a;n
+			/^[0-9\. 不适用]+$/{H;x;s/\n/ /g;x;br3a}
+			/^ *['"${inps1}"']+ *$/{
+				s/ +//g
+				H
+				x
+				s/^([^0-9\. ]+) ([^\n]+)\n(['"${inps1}"']+)$/\1\3 \2/
+				x
+			}
+			x
+			w '$log'
+			y/\(\/\)/（／）/
+			'"${TRIM_BLANKS}"'
 			q
 		}
 	}' $1))
