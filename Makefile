@@ -5,6 +5,12 @@ FILTER  := $(shell which report 2>/dev/null)
 REPORT	:= report.csv
 MERGE	:= cat
 
+ifeq ($(shell uname -s),Darwin)
+SED	:= $(shell which gsed)
+else
+SED	:= $(shell which sed)
+endif
+
 REPORT_HEADER		:= code date unit 2019  2018  rate  profit name
 LINE_FORMAT 	:= %6s, %8s, %7s, %20s, %20s, %10s, %8s,   %-20s
 export LINE_FORMAT

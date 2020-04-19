@@ -2,7 +2,8 @@
 
 debug=${2:-/dev/null}
 
-SED=`which sed`
+[[ "`uname -s`" = "Darwin" ]] && SED=`which gsed` || SED=`which sed`
+
 JOIN_LINE_FOR_NDIGIT='/[^0-9]$/{N;s/\n//}'
 JOIN_LINES_BY_DIGITS='/[0-9]$/{N;s/\n[^0-9].*//;s/\n/ /}'
 TRIM_BLANKS='s/^ *//;s/ +/ /g'
