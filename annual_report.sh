@@ -124,10 +124,28 @@ function parser1()
 
 function parser2()
 {
-	for loc in "扣除非(经|經)常性(损益后|損益後)的" "稀(释|釋)每股收益"
+	inps0='扣除非(经|經)常性(损益后|損益後)[的基]'
+	inps1='扣除非经經常性损益后損益後的基本每股收益\(（元／\/股）\)'
+	for loc in "扣除非(经|經)常性(损益后|損益後)[的基]" "稀(释|釋)每股收益"
 	do
 		d=($(${SED} -nE '/'$loc'/{=
-			'"$JOIN_LINE_FOR_NDIGIT"';'"$TRIM_BLANKS"';p;q};$=
+			'"${RM_LABEL_DIGIT}"'
+			'"$JOIN_LINE_FOR_NDIGIT"'
+			s/^ +//
+			x
+			:r3a;n
+			/^[0-9\. 不适用]+$/{H;x;s/\n/ /g;x;br3a}
+			/^ *['"${inps1}"']+ *$/{
+				s/ +//g
+				H
+				x
+				s/^([^0-9\. ]+) ([^\n]+)\n(['"${inps1}"']+)$/\1\3 \2/
+				x
+			}
+			x
+			y/\(\/\)/（／）/
+			'"$TRIM_BLANKS"'
+			p;q;};$=
 		' $1))
 		[[ $# -gt 1 ]] && printf "%-25s +%.8d: %s\n" $1 ${d[0]} "`echo ${d[@]:1}`" >> $2
 		[[ ${#d[@]} -gt 2 ]] && val[$idx]=${d[2]} && idx=$(expr $idx + 1) && return
