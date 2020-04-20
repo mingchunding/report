@@ -44,11 +44,13 @@ nfiles  ?= $(words $(pdfs))
 tmpfile	:= $(shell mktemp -u)
 VERBOSE_LOG ?= $(tmpfile).annual_report
 
-all: $(REPORT)
+all: $(REPORT) FORCE
+	@printf "To run '\e[0;32mmake lastlog\e[0m' to view log contents of last build.\n"
 
 $(REPORT): $(csvs)
 	@echo $(REPORT_HEADER) | xargs printf "$(LINE_FORMAT)\n"  > $@
 	@$(MERGE) $^ >> $@
+	@printf "Detail Log is saved in \e[0;32m'%s'\e[0m\n" "$(VERBOSE_LOG)"
 
 %.csv: %.txt $(MAKEFILE_LIST) $(FILTER)
 	@$(FILTER) $< $(VERBOSE_LOG) > $@
@@ -65,13 +67,25 @@ $(REPORT): $(csvs)
 	@echo "No command to download $@"
 	@true
 
+%.txt.sed: %.csv FORCE
+	cat $@
+
 clean:
 	@rm -rf .*.csv .*.txt.sed
 
 distclean: clean
 	@rm -rf .*.txt
 
+lastlog:
+	@less `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1`
+
+listlog:
+	@ls -Glrt $(dir $(tmpfile))tmp.*.annual_report
+
+cleanlog:
+	@rm $(dir $(tmpfile))tmp.*.annual_report
+
 -include helper.mk
 
-.PHONY: clean distclean
+.PHONY: clean distclean FORCE
 .SECONDARY: $(text)
