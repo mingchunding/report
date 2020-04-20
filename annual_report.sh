@@ -15,7 +15,7 @@ function parser1()
 {
 	log=$1.1.sed
 
-	loc1='主要(会计数据和财务指标|會計數據和財務指標|财务数据)'
+	loc1='主要(会计数据和财务指标|會計數據和財務指標)'
 	loc2='(营业|營業)收入'
 	th1='主要会计$|[本报告期比上年同期增减（%）]{4,}$|主要会计数据 *[0-9]{4} *年'
 	th2='([ 本期比上年同期增减]*[0-9]{4}){2,}'
@@ -26,7 +26,7 @@ function parser1()
 	inps2='稀(释|釋)每股收益'
 #	year=$($SED -nE "/$loc1/,\${/[0-9]{4} *年/{s/([0-9]{4} *年).*/\1/;p;q}}" $1)
 
-	d=($($SED -nE '/'$loc1'/,${
+	d=($($SED -nE '/'$loc1'$/,${
 		:r0
 		/[单單位：人民币:百千万]+ *元/{
 			x
@@ -61,7 +61,11 @@ function parser1()
 		/'${loc2}'/{
 			x				# exchange origin in current and unit in hold space
 			/^:r3$/{x;br3}			# goto next field
-			/^$/s/.*/未知/			# unit is not found
+			/^$/{
+				g
+				s/.*（(.+)）.*/\1/	# unit is here
+				/^$/s/.*/未知/		# unit is not found
+			}
 			=				# print line number
 			w '$log'
 			p;x				# print unit and retrieve origin line
