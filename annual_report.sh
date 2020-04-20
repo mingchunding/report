@@ -113,7 +113,7 @@ function parser1()
 		百万元) unit=1000000 ;;
 		*)	printf "\e[0;31m[Warning] unrecongnized unit\e[m (assume as 1): %s in file %s\n" \
 				${d[1]} "$1" > /dev/stderr
-			unit=1 && d[1]=元;;
+			unit=? && d[1]=元;;
 	esac
 	val[$idx]=${unit} && idx=$(expr $idx + 1)
 
