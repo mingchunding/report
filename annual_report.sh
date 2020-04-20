@@ -156,7 +156,8 @@ function parser2()
 		d=(${d[0]} $((42 + ${#d[1]})) ${d[@]:1})
 		[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[@]} >> $2
 
-		[[ ${#d[@]} -gt 3 ]] && val[$idx]=${d[3]} && idx=$(expr $idx + 1) && return
+		[[ ${#d[@]} -gt 3 ]] && val[$idx]=${d[3]} && idx=$(expr $idx + 1)
+		[[ ${#d[@]} -gt 4 ]] && val[$idx]=${d[4]} && idx=$(expr $idx + 1) && return
 	done
 }
 
