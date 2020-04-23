@@ -71,7 +71,10 @@ function parser1()
 			/\.\$/N;s/\n//			# append one more line when end with "."
 			'"$JOIN_LINES_BY_DIGITS"'	# append one more line when end with number
 			'"$TRIM_BLANKS"'		# strip useless blanks
+			w '$log'
 			s/（.*）//g			# strip comments
+			/[^ ]+ ([^ ]{8,} ){3}/!s/([^ ]+ )/- &/4
+			s/(([^ ]+ ){5}).*/\1/
 			w '$log'
 			p				# print current contents
 			s/^.*$/:r3/			# mark flag to next step
@@ -108,13 +111,14 @@ function parser1()
 		}
 	}' $1))
 
-	[[ ${#d[@]} -gt 5 ]] && [[ "${d[5]/,/}" = "${d[5]}" ]] && d=("${d[@]:0:5}" "-" "${d[@]:5}")
-	FORMAT="%-25s +%.8d: %*s %5s %20s %20s %20s"
+	#[[ ${#d[@]} -gt 5 ]] && [[ "${d[5]/,/}" = "${d[5]}" ]] && d=("${d[@]:0:5}" "-" "${d[@]:5}")
+	FORMAT="%-25s +%.8d: %*s %*s %20s %20s %20s"
 	[[ ${#d[@]} -gt 5 ]] && FORMAT="${FORMAT} %8s"
 	for ((i=7; i<${#d[@]}; i++)) do
 		FORMAT="${FORMAT} %20s"
 	done
-	[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[0]} $((6 + ${#d[1]})) ${d[@]:1} >> $2
+	[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[0]} $((6 + ${#d[1]})) ${d[1]} \
+		$((10 + ${#d[2]})) ${d[@]:2} >> $2
 
 	case ${d[1]} in
 		元)	unit=1 ;;
