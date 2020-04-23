@@ -70,6 +70,9 @@ $(REPORT): $(csvs)
 %.txt.1.sed: %.csv FORCE
 	cat $@
 
+%.txt.2.sed: %.csv FORCE
+	cat $@
+
 %.txt.4.sed: %.csv FORCE
 	cat $@
 
