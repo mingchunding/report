@@ -73,7 +73,7 @@ function parser1()
 			'"$TRIM_BLANKS"'		# strip useless blanks
 			w '$log'
 			s/（.*）//g			# strip comments
-			/[^ ]+ ([^ ]{8,} ){3}/!s/([^ ]+ )/- &/4
+			/[^ ]+ ([^ ]{8,} ){3}/!s/([^ ]+ ?)/\? &/4
 			s/(([^ ]+ ){5}).*/\1/
 			w '$log'
 			p				# print current contents
@@ -105,36 +105,55 @@ function parser1()
 				}
 			}
 			'"${TRIM_BLANKS}"'
+			=
 			w '$log'
 			y/\(\/\)/（／）/
+			p
 			q
 		}
 	}' $1))
 
 	#[[ ${#d[@]} -gt 5 ]] && [[ "${d[5]/,/}" = "${d[5]}" ]] && d=("${d[@]:0:5}" "-" "${d[@]:5}")
-	FORMAT="%-25s +%.8d: %*s %*s %20s %20s %20s"
-	[[ ${#d[@]} -gt 5 ]] && FORMAT="${FORMAT} %8s"
-	for ((i=7; i<${#d[@]}; i++)) do
-		FORMAT="${FORMAT} %20s"
-	done
-	[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[0]} $((6 + ${#d[1]})) ${d[1]} \
-		$((10 + ${#d[2]})) ${d[@]:2} >> $2
+	FORMAT="%-25s +%.8d: %*s %*s %20s %20s %20s %8s"
+	w1=${d[1]//\w/}
+	w2=${d[2]//\w/}
+	d=(${d[0]} $((6 + ${#w1})) ${d[1]} $((10 + ${#w2})) ${d[@]:2})
+	[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[@]:0:9} >> $2
 
-	case ${d[1]} in
+	case ${d[2]} in
 		元)	unit=1 ;;
 		千元)	unit=1000 ;;
 		万元)	unit=10000 ;;
 		百万元) unit=1000000 ;;
 		*)	printf "\e[0;31m[Warning] unrecongnized unit\e[m (assume as 1): %s in file %s\n" \
-				${d[1]} "$1" > /dev/stderr
-			unit=? && d[1]=元;;
+				${d[2]} "$1" > /dev/stderr
+			unit=? && d[2]=元;;
 	esac
 	val[$idx]=${unit} && idx=$(expr $idx + 1)
+
+	for o in 5 6; do
+		v=${d[$o]:-?}
+		val[$idx]=${v//,/} && idx=$(expr $idx + 1)
+	done
+
+	[[ ${#d[@]} -lt 12 ]] && return 0
+
+	# parse profit
+	d=(${d[@]:9})
+	FORMAT="%-25s +%.8d: %-*s"
+	for ((i=2; i<${#d[@]}; i++)) do
+		FORMAT="${FORMAT} %10s"
+	done
+	d[1]=${d[1]/╱/／}
+	d=(${d[0]} $((42 + ${#d[1]})) ${d[@]:1})
+	[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[@]} >> $2
 
 	for o in 3 4; do
 		v=${d[$o]:-?}
 		val[$idx]=${v//,/} && idx=$(expr $idx + 1)
 	done
+
+	return 0
 }
 
 function parser2()
@@ -143,7 +162,7 @@ function parser2()
 	inps1='扣除非(经|經)常性(损|損)益(后|後)(的)?基本每股收益(\(|（)元(／|\/)股(）|\))'
 	inps2='稀(释|釋)每股收益(\(|（)元(／|\/)股(）|\))'
 	loc1='主要(会计数据和财务指标|會計數據和財務指標)'
-	for loc in "$inps1" "$inps2"
+	for loc in "$inps2"
 	do
 #		echo "Searching $loc" > /dev/stderr
 		d=($($SED -nE '/'$loc1'$/,+100{
@@ -189,8 +208,10 @@ function parser2()
 		[[ $# -gt 1 ]] && printf "${FORMAT}\n" $1 ${d[@]} >> $2
 
 		[[ ${#d[@]} -gt 3 ]] && val[$idx]=${d[3]} && idx=$(expr $idx + 1)
-		[[ ${#d[@]} -gt 4 ]] && val[$idx]=${d[4]} && idx=$(expr $idx + 1) && return
+		[[ ${#d[@]} -gt 4 ]] && val[$idx]=${d[4]} && idx=$(expr $idx + 1) && return 0
 	done
+
+	return -1
 }
 
 function parser3()
@@ -235,6 +256,8 @@ function parser4()
 	esac || v=0
 
 	val[$idx]=$v && idx=$(expr $idx + 1)
+
+	return 0
 }
 
 f=${1##*/}
@@ -245,7 +268,8 @@ val[$idx]=${code#.} 		&& idx=$(expr $idx + 1)
 val[$idx]=${dt%%_*} 		&& idx=$(expr $idx + 1)
 
 parser1 $1 $debug
-parser2 $1 $debug
+[[ $idx -lt 7 ]] && parser2 $1 $debug
+while [ $idx -lt 7 ]; do val[$idx]='?' && idx=$(expr $idx + 1); done
 parser4 $1 $debug
 parser3 $1 $debug
 

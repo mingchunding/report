@@ -80,7 +80,7 @@ report.utf8.csv: $(csvs)
 	cat $@
 
 clean:
-	@rm -rf .*.csv .*.txt.sed
+	@rm -rf .*.csv .*.txt.*.sed
 
 distclean: clean
 	@rm -rf .*.txt
