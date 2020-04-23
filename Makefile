@@ -47,7 +47,10 @@ VERBOSE_LOG ?= $(tmpfile).annual_report
 all: $(REPORT) FORCE
 	@printf "To run '\e[0;32mmake lastlog\e[0m' to view log contents of last build.\n"
 
-$(REPORT): $(csvs)
+%.csv: %.utf8.csv
+	@iconv -f UTF-8 -t GB2312 $< | unix2dos > $@
+
+report.utf8.csv: $(csvs)
 	@echo $(REPORT_HEADER) | xargs printf "$(LINE_FORMAT)\n"  > $@
 	@$(MERGE) $^ >> $@
 	@printf "Detail Log is saved in \e[0;32m'%s'\e[0m\n" "$(VERBOSE_LOG)"
