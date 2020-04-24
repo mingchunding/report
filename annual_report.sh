@@ -115,10 +115,12 @@ function parser1()
 			x
 			/^'"$p"'/!{s/^.*$/:r3/;x;br3}
 			w '${log}'
+			s/(收益)\(?[0-9]+\)? /\1 /	# remove comments
 			/^[^ ]{'$ac_min'}/{		# complete perfect but unnecessary
 				/^[^ ]{'$ac_max'}/!{
 					N
 					s/^([^ ]+) ([^\n]+)\n *([^ ]+) *$/\1\3 \2/
+					s/\n.*//	# remove addition line if mismatch
 				}
 			}
 			'"${TRIM_BLANKS}"'
@@ -179,14 +181,14 @@ function parser2()
 {
 	log=$1.2.sed
 
-	for ((j=0; j<${#profit_items[@]}; j++))
+	for ((j=1; j<${#profit_items[@]}; j++))
 	do
 		p=${profit_items[$j]}
 		loc=$p${suffix}
 		ac_min=${ac_need[$j]}		# suffix is partial
 		ac_max=${ac_done[$j]}		# suffix is completed
 		#echo "Searching $loc" > /dev/stderr
-		d=($($SED -nE ''$s',+100{
+		d=($($SED -nE ''$s',+200{
 			:r3
 			/'"${loc:0:10}"'/!b
 			s/.*('"${loc:0:10}"')/\1/
@@ -209,10 +211,12 @@ function parser2()
 			x
 			/^'"$p"'/!{x;br3}
 			w '${log}'
+			s/(收益) *\([0-9]+\) /\1 /	# remove possible numberic label?
 			/^[^ ]{'$ac_min'}/{		# complete perfect but unnecessary
 				/^[^ ]{'$ac_max'}/!{
 					N
 					s/^([^ ]+) ([^\n]+)\n *([^ ]+) *$/\1\3 \2/
+					s/\n.*//	# remove addition line if mismatch
 				}
 			}
 			'"$TRIM_BLANKS"'
