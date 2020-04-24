@@ -16,7 +16,7 @@ ac_need=(17 7)
 ac_done=(21 11)
 suffix='(\(|（)元(／|\/)股(）|\))'
 s=$($SED -nE '/'"$loc1"'$/{=;q}' "$1")
-s=${s:=200}
+s=${s:=100}
 
 function parser1()
 {
@@ -34,7 +34,7 @@ function parser1()
 	ac_min=${ac_need[0]}		# suffix is partial
 	ac_max=${ac_done[0]}		# suffix is completed
 
-	d=($($SED -nE ''$s',+200{
+	d=($($SED -nE ''$s',+300{
 		:r0
 		/[单單位：人民币:百千万]+ *元/{
 			x
@@ -188,7 +188,7 @@ function parser2()
 		ac_min=${ac_need[$j]}		# suffix is partial
 		ac_max=${ac_done[$j]}		# suffix is completed
 		#echo "Searching $loc" > /dev/stderr
-		d=($($SED -nE ''$s',+200{
+		d=($($SED -nE ''$s',+300{
 			:r3
 			/'"${loc:0:10}"'/!b
 			s/.*('"${loc:0:10}"')/\1/
