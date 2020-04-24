@@ -4,22 +4,24 @@ debug=${2:-/dev/null}
 
 [[ "`uname -s`" = "Darwin" ]] && SED=`which gsed` || SED=`which sed`
 
-JOIN_LINE_FOR_NDIGIT='/[^0-9]$/{N;s/\n//}'
+JOIN_LINE_FOR_NDIGIT='/[^0-9]$/{N;s/\n *(（)/\1/;s/\n//}'
 JOIN_LINES_BY_DIGITS='/[0-9]$/{N;s/\n[^0-9].*//;s/\n/ /}'
 RM_LABEL_DIGIT='s/([^0-9 ]) [0-9]([^0-9])/\1  \2/'
 TRIM_BLANKS='s/^ *//;s/ +/ /g'
 val={}
 idx=0
+loc1='主要(会计|财务|會計|財務)(数据|數據)[和与](会计|财务|會計|財務)(指标|指標)'
 profit_items=('扣除非(经|經)常性(损|損)益(后|後)(的)?基本每股收益' '稀(释|釋)每股收益')
 ac_need=(17 7)
 ac_done=(21 11)
 suffix='(\(|（)元(／|\/)股(）|\))'
+s=$($SED -nE '/'"$loc1"'$/{=;q}' "$1")
+s=${s:=200}
 
 function parser1()
 {
 	log=$1.1.sed
 
-	loc1='主要(会计数据和财务指标|會計數據和財務指標)'
 	loc2='(营业|營業)[总]?收入'
 	th1='主要会计$|[本报告期比上年同期增减（%）]{4,}$|主要会计数据 *[0-9]{4} *年'
 	th2='([ 本期比上年同期增减]*[0-9]{4}){2,}'
@@ -28,11 +30,11 @@ function parser1()
 #	year=$($SED -nE "/$loc1/,\${/[0-9]{4} *年/{s/([0-9]{4} *年).*/\1/;p;q}}" $1)
 
 	p=${profit_items[0]}
-	loc=$p$suffix
+	loc=$p${suffix}
 	ac_min=${ac_need[0]}		# suffix is partial
 	ac_max=${ac_done[0]}		# suffix is completed
 
-	d=($($SED -nE '/'$loc1'$/,+200{
+	d=($($SED -nE ''$s',+200{
 		:r0
 		/[单單位：人民币:百千万]+ *元/{
 			x
@@ -41,6 +43,8 @@ function parser1()
 			s/ +//g				# strip blanks
 #			w '$log'
 			s/.*[单單位：人民币:]+(.*元).*/\1/
+			s/^.{6,}$//			# wrong data
+			/^$/!w '$log'
 			x				# retrieve origin and continue others
 		}
 		:r1
@@ -64,13 +68,16 @@ function parser1()
 			/ +[本期比上年同期增减\(（%）\)]+$/br1a
 			br0
 		}
-		/'${loc2}'/{
+		/^[ ]*'${loc2}'/{
 			x				# exchange origin in current and unit in hold space
 			/^:r3$/{x;br3}			# goto next field
 			/^$/{
 				g
-				s/.*（(.+)）.*/\1/	# unit is here
+				w '$log'
+				s/.*[\(（](.+)[）\)].*/\1/;
+				/.+/tr2b		# unit is here
 				/^$/s/.*/未知/		# unit is not found
+				:r2b
 			}
 			=				# print line number
 			w '$log'
@@ -97,8 +104,8 @@ function parser1()
 			:r3a;n
 			/^[0-9\. 不适用]+$/{H;x;s/\n/ /g;x;br3a}
 			w '${log}'
-			/^ *['"${loc}"']+ *$/{
-				s/ +//g
+			/^[ ]*['"${loc}"']+ *$/{
+				s/[ ]+//g
 				H
 				w '${log}'
 				x
@@ -122,6 +129,8 @@ function parser1()
 			q
 		}
 	}' $1))
+
+	[[ ${#d[@]} -lt 5 ]] && return 255
 
 	#[[ ${#d[@]} -gt 5 ]] && [[ "${d[5]/,/}" = "${d[5]}" ]] && d=("${d[@]:0:5}" "-" "${d[@]:5}")
 	FORMAT="%-25s +%.8d: %*s %*s %20s %20s %20s %8s"
@@ -169,18 +178,18 @@ function parser1()
 function parser2()
 {
 	log=$1.2.sed
-	loc1='主要(会计数据和财务指标|會計數據和財務指標)'
 
 	for ((j=0; j<${#profit_items[@]}; j++))
 	do
 		p=${profit_items[$j]}
-		loc=$p$suffix
+		loc=$p${suffix}
 		ac_min=${ac_need[$j]}		# suffix is partial
 		ac_max=${ac_done[$j]}		# suffix is completed
 		#echo "Searching $loc" > /dev/stderr
-		d=($($SED -nE '/'$loc1'$/,+100{
+		d=($($SED -nE ''$s',+100{
 			:r3
-			/^ *'"${loc:0:10}"'/!b
+			/'"${loc:0:10}"'/!b
+			s/.*('"${loc:0:10}"')/\1/
 			'"${RM_LABEL_DIGIT}"'
 			'"$JOIN_LINE_FOR_NDIGIT"'
 			s/^ +//
@@ -225,7 +234,7 @@ function parser2()
 		[[ ${#d[@]} -gt 4 ]] && val[$idx]=${d[4]} && idx=$(expr $idx + 1) && return 0
 	done
 
-	return -1
+	return 255
 }
 
 function parser3()
@@ -282,8 +291,9 @@ val[$idx]=${code#.} 		&& idx=$(expr $idx + 1)
 val[$idx]=${dt%%_*} 		&& idx=$(expr $idx + 1)
 
 parser1 $1 $debug
+while [ $idx -lt 5 ]; do val[$idx]='\?' && idx=$(expr $idx + 1); done
 [[ $idx -lt 7 ]] && parser2 $1 $debug
-while [ $idx -lt 7 ]; do val[$idx]='?' && idx=$(expr $idx + 1); done
+while [ $idx -lt 7 ]; do val[$idx]='\?' && idx=$(expr $idx + 1); done
 parser4 $1 $debug
 parser3 $1 $debug
 
