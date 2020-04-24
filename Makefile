@@ -44,8 +44,14 @@ nfiles  ?= $(words $(pdfs))
 tmpfile	:= $(shell mktemp -u)
 VERBOSE_LOG ?= $(tmpfile).annual_report
 
+define PRINT_TIPS
+	ITEM="$(1)" && \
+	printf "To run \'\e[0;32mmake %s\e[0m'%*cto view %s data in last build.\n" \
+	$1 $$((14 - $${#ITEM})) ' ' "$(1:raw_%=raw %)"
+endef
+
 all: $(REPORT) FORCE
-	@printf "To run '\e[0;32mmake lastlog\e[0m' to view log contents of last build.\n"
+	$(MAKE) hint
 
 %.csv: %.utf8.csv
 	@iconv -f UTF-8 -t GB2312 $< | unix2dos > $@
@@ -71,13 +77,13 @@ report.utf8.csv: $(csvs)
 	@true
 
 %.txt.1.sed: %.csv FORCE
-	cat $@
+	@cat $@
 
 %.txt.2.sed: %.csv FORCE
-	cat $@
+	@cat $@
 
 %.txt.4.sed: %.csv FORCE
-	cat $@
+	@cat $@
 
 clean:
 	@rm -rf .*.csv .*.txt.*.sed
@@ -88,13 +94,28 @@ distclean: clean
 lastlog:
 	@less `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1`
 
+raw_profit:
+	@grep -E '稀释|扣除' `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
+
+raw_incoming:
+	@grep -E '营业[总]?收入' `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
+
+raw_bonus:
+	@grep -E '每.*股.*元$$' `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
+
 listlog:
 	@ls -Glrt $(dir $(tmpfile))tmp.*.annual_report
 
 cleanlog:
 	@rm $(dir $(tmpfile))tmp.*.annual_report
 
+hint:
+	@$(call PRINT_TIPS, lastlog)
+	@$(call PRINT_TIPS, raw_incoming)
+	@$(call PRINT_TIPS, raw_profit)
+	@$(call PRINT_TIPS, raw_bonus)
+
 -include helper.mk
 
-.PHONY: clean distclean FORCE
+.PHONY: clean distclean hint FORCE
 .SECONDARY: $(text)

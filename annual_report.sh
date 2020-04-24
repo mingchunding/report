@@ -10,6 +10,10 @@ RM_LABEL_DIGIT='s/([^0-9 ]) [0-9]([^0-9])/\1  \2/'
 TRIM_BLANKS='s/^ *//;s/ +/ /g'
 val={}
 idx=0
+profit_items=('扣除非(经|經)常性(损|損)益(后|後)(的)?基本每股收益' '稀(释|釋)每股收益')
+ac_need=(17 7)
+ac_done=(21 11)
+suffix='(\(|（)元(／|\/)股(）|\))'
 
 function parser1()
 {
@@ -21,9 +25,12 @@ function parser1()
 	th2='([ 本期比上年同期增减]*[0-9]{4}){2,}'
 	th3='[0-9]{4} *年末? *本期'
 	th4='(.+ 调整[前后]){2,}'
-	inps1='扣除非(经|經)常性(损|損)益(后|後)(的)?基本每股收益(\(|（)元(／|\/)股(）|\))'
-	inps2='稀(释|釋)每股收益(\(|（)元(／|\/)股(）|\))'
 #	year=$($SED -nE "/$loc1/,\${/[0-9]{4} *年/{s/([0-9]{4} *年).*/\1/;p;q}}" $1)
+
+	p=${profit_items[0]}
+	loc=$p$suffix
+	ac_min=${ac_need[0]}		# suffix is partial
+	ac_max=${ac_done[0]}		# suffix is completed
 
 	d=($($SED -nE '/'$loc1'$/,+200{
 		:r0
@@ -82,24 +89,27 @@ function parser1()
 			b				# branch to end of script to continue
 		}
 		:r3
-		/'"${inps1:0:10}"'/{
+		/^ *'"${loc:0:10}"'/{
 			'"${RM_LABEL_DIGIT}"'
 			'"${JOIN_LINE_FOR_NDIGIT}"'
 			s/^ +//
 			x
 			:r3a;n
 			/^[0-9\. 不适用]+$/{H;x;s/\n/ /g;x;br3a}
-			/^ *['"${inps1}"']+ *$/{
+			w '${log}'
+			/^ *['"${loc}"']+ *$/{
 				s/ +//g
 				H
+				w '${log}'
 				x
 				s/^([^ ]+) ([^\n]+)\n([^ ]+)$/\1\3 \2/
 				x
 			}
 			x
-			/^'"${inps1:0:31}"'/!{s/^.*$/:r3/;x;br3}
-			/^[^ ]{17}/{			# complete perfect but unnecessary
-				/^[^ ]{21}/!{
+			/^'"$p"'/!{s/^.*$/:r3/;x;br3}
+			w '${log}'
+			/^[^ ]{'$ac_min'}/{		# complete perfect but unnecessary
+				/^[^ ]{'$ac_max'}/!{
 					N
 					s/^([^ ]+) ([^\n]+)\n *([^ ]+) *$/\1\3 \2/
 				}
@@ -159,19 +169,22 @@ function parser1()
 function parser2()
 {
 	log=$1.2.sed
-	inps1='扣除非(经|經)常性(损|損)益(后|後)(的)?基本每股收益(\(|（)元(／|\/)股(）|\))'
-	inps2='稀(释|釋)每股收益(\(|（)元(／|\/)股(）|\))'
 	loc1='主要(会计数据和财务指标|會計數據和財務指標)'
-	for loc in "$inps2"
+
+	for ((j=0; j<${#profit_items[@]}; j++))
 	do
-#		echo "Searching $loc" > /dev/stderr
+		p=${profit_items[$j]}
+		loc=$p$suffix
+		ac_min=${ac_need[$j]}		# suffix is partial
+		ac_max=${ac_done[$j]}		# suffix is completed
+		#echo "Searching $loc" > /dev/stderr
 		d=($($SED -nE '/'$loc1'$/,+100{
 			:r3
-			/'"${loc:0:10}"'/!b
+			/^ *'"${loc:0:10}"'/!b
 			'"${RM_LABEL_DIGIT}"'
 			'"$JOIN_LINE_FOR_NDIGIT"'
 			s/^ +//
-#			w '${log}'
+			w '${log}'
 			x
 			:r3a;n
 			/^[0-9\. 不适用]+$/{H;x;s/\n/ /g;x;br3a}
@@ -185,9 +198,10 @@ function parser2()
 				x
 			}
 			x
-			/^'"${loc:0:31}"'/!{x;br3}
-			/^[^ ]{17}/{			# complete perfect but unnecessary
-				/^[^ ]{21}/!{
+			/^'"$p"'/!{x;br3}
+			w '${log}'
+			/^[^ ]{'$ac_min'}/{		# complete perfect but unnecessary
+				/^[^ ]{'$ac_max'}/!{
 					N
 					s/^([^ ]+) ([^\n]+)\n *([^ ]+) *$/\1\3 \2/
 				}
