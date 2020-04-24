@@ -243,12 +243,39 @@ function parser2()
 
 function parser3()
 {
-	d=$($SED -nE '/公司简称：/{=;s/.*公司简称： *(.+)$/\1/;p;q}' $1)
-	line=$(echo "$d" | $SED -n '1p')
-	[[ -z $line ]] && line=0
-	[[ $line -gt 0 ]] && d=$(echo "$d" | $SED -n '$p') || d="N/A"
-	[[ $# -gt 1 ]] && printf "%-25s +%.8d: %s\n" $1 $line "$d" >> $2
-	val[$idx]=\"$d\" && idx=$(expr $idx + 1)
+	log=$1.3.sed
+	d=($($SED -nE '/.*(公司|股票)简称[： ]+/{
+		=; w '${log}'
+		h; s///; s/ {2,}.*//
+		s/[、，；\/].*//
+		s/ST /ST/; s/ [^A]*//
+#		s/ +//g
+		/^股票代码$/{
+			s/.*//;x		# locate column No.
+			:r0
+			/^ *股票代码/!{
+				s/^ *[^ ]+//
+				x;s/.*/&./;x
+				br0
+			}
+			n;w '${log}'		# get column from next line
+			x
+			:r1
+			/.{2}/{
+				s/.//; x
+				s/^ *[^ ]+//
+				w '${log}'
+				x; br1
+			}
+			x; s/^ *//; s/ .*$//
+		}
+		w '${log}'
+		p;q
+	}' $1))
+
+	line=${d[0]:-0}
+	[[ $# -gt 1 ]] && printf "%-25s +%.8d: %s\n" $1 $line "${d[1]:=N/A}" >> $2
+	val[$idx]=\"${d[1]}\" && idx=$(expr $idx + 1)
 }
 
 function parser4()
