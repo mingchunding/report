@@ -33,7 +33,7 @@ endif
 
 #$(printf "\e[1;32m$(LOG_HEADER_FORMAT)\e[0m\n" $(LOG_HEADER_ITEM))
 
-pdfs := $(sort $(wildcard *.pdf))
+pdfs := $(sort $(wildcard *.[Pp][Dd][Ff]))
 text := $(pdfs:%.pdf=.%.txt)
 csvs := $(pdfs:%.pdf=.%.csv)
 
@@ -45,13 +45,14 @@ tmpfile	:= $(shell mktemp -u)
 VERBOSE_LOG ?= $(tmpfile).annual_report
 
 define PRINT_TIPS
-	ITEM="$(1)" && \
-	printf "To run \'\e[0;32mmake %s\e[0m'%*cto view %s data in last build.\n" \
-	$1 $$((14 - $${#ITEM})) ' ' "$(1:raw_%=raw %)"
+	ITEM="$(1)" && w=$${#ITEM} &&\
+	printf "To run \'\e[0;32mmake %s\e[0m'%*s view %-*s data in last build.\n" \
+	$1 $$((15 - $$w)) 'to' 12 "$(patsubst last%,% contents,$(1:raw_%=raw %))"
+
 endef
 
 all: $(REPORT) FORCE
-	$(MAKE) hint
+	@$(MAKE) hint
 
 %.csv: %.utf8.csv
 	@iconv -f UTF-8 -t GB2312 $< | unix2dos > $@
@@ -76,17 +77,12 @@ report.utf8.csv: $(csvs)
 	@echo "No command to download $@"
 	@true
 
-%.txt.1.sed: %.csv FORCE
-	@cat $@
-
-%.txt.2.sed: %.csv FORCE
-	@cat $@
-
-%.txt.3.sed: %.csv FORCE
-	@cat $@
-
-%.txt.4.sed: %.csv FORCE
-	@cat $@
+define DEBUG_PARSER
+.%.txt.$(1).sed: .%.csv FORCE
+	@cat $$@
+	@echo
+endef
+$(foreach i,1 2 3 4,$(eval $(call DEBUG_PARSER,$(i))))
 
 clean:
 	@rm -rf .*.csv .*.txt.*.sed
@@ -97,14 +93,12 @@ distclean: clean
 lastlog:
 	@less `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1`
 
-raw_profit:
-	@grep -E '稀释|扣除' `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
-
-raw_incoming:
-	@grep -E '营业[总]?收入' `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
-
-raw_bonus:
-	@grep -E '每.*股.*元$$' `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
+raw_profit:   KEYS := '稀释|扣除'
+raw_incoming: KEYS := '营业[总]?收入'
+raw_bonus:    KEYS := '每.*股.*元$$'
+raw_name:     KEYS := '股票名称'
+raw_%:
+	@grep -E ${KEYS} `ls -1rt $(dir $(tmpfile))tmp.*.annual_report | tail -1` | sort | less
 
 listlog:
 	@ls -Glrt $(dir $(tmpfile))tmp.*.annual_report
@@ -112,11 +106,9 @@ listlog:
 cleanlog:
 	@rm $(dir $(tmpfile))tmp.*.annual_report
 
+HINT_GOALS := lastlog raw_incoming raw_profit raw_bonus raw_name
 hint:
-	@$(call PRINT_TIPS, lastlog)
-	@$(call PRINT_TIPS, raw_incoming)
-	@$(call PRINT_TIPS, raw_profit)
-	@$(call PRINT_TIPS, raw_bonus)
+	@$(foreach p,$(HINT_GOALS),$(call PRINT_TIPS,$(p)))
 
 -include helper.mk
 
