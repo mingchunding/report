@@ -82,6 +82,9 @@ report.utf8.csv: $(csvs)
 %.txt.2.sed: %.csv FORCE
 	@cat $@
 
+%.txt.3.sed: %.csv FORCE
+	@cat $@
+
 %.txt.4.sed: %.csv FORCE
 	@cat $@
 
