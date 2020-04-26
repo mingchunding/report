@@ -28,7 +28,9 @@ endif
 
 ifeq ($(FILTER),)
 FILTER := $(wildcard ./annual_report.sh)
+ifeq ($(MAKELEVEL),0)
 $(warning $(FILTER) is used.)
+endif
 endif
 
 #$(printf "\e[1;32m$(LOG_HEADER_FORMAT)\e[0m\n" $(LOG_HEADER_ITEM))
@@ -43,6 +45,13 @@ csvs_exist := $(wildcard .*.csv)
 nfiles  ?= $(words $(pdfs))
 tmpfile	:= $(shell mktemp -u)
 VERBOSE_LOG ?= $(tmpfile).annual_report
+
+define CREATE_PDF2TXT_CFG
+	echo "%.txt: PDF_FLAGS := -q -layout -nopgbrk" && \
+	echo "PDF2TEXT_POST_SED:='/^ {10,}|^[ 0-9\/]*\$$\$$/d'"
+endef
+$(shell test -f .pdf2txt.cfg || ($(call CREATE_PDF2TXT_CFG) > .pdf2txt.cfg))
+include .pdf2txt.cfg
 
 define PRINT_TIPS
 	ITEM="$(1)" && w=$${#ITEM} &&\
@@ -62,16 +71,13 @@ report.utf8.csv: $(csvs)
 	@$(MERGE) $^ >> $@
 	@printf "Detail Log is saved in \e[0;32m'%s'\e[0m\n" "$(VERBOSE_LOG)"
 
-%.csv: %.txt $(MAKEFILE_LIST) $(FILTER)
+%.csv: %.txt $(firstword $(MAKEFILE_LIST)) $(FILTER)
 	@$(FILTER) $< $(VERBOSE_LOG) > $@
 
-#@printf "[%3d%%] \e[0;32mAnalysing %s\e[m\n" $$((($$(ls -1 .*.csv 2>/dev/null | wc -l) + 1) * 100 / $(nfiles))) $<
-#%.txt: PDF_FLAGS := -raw
-%.txt: PDF_FLAGS := -q -layout
-.%.txt: %.pdf
+.%.txt: %.pdf .pdf2txt.cfg
 	@printf "[%3d%%] \e[0;32mConverting %s\e[m\n" $$((($$(ls -1 .*.txt 2>/dev/null | wc -l) + 1) *100 / $(nfiles))) $<
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
-	@$(SED) -Ei '/ {10,}|^[ 0-9\/]*$$/d' $@
+	@$(SED) -Ei $(PDF2TEXT_POST_SED) $@
 
 %.pdf:
 	@echo "No command to download $@"
