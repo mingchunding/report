@@ -42,7 +42,6 @@ csvs := $(pdfs:%.pdf=.%.csv)
 text_exist := $(wildcard .*.txt)
 csvs_exist := $(wildcard .*.csv)
 
-nfiles  ?= $(words $(pdfs))
 tmpfile	:= $(shell mktemp -u)
 VERBOSE_LOG ?= $(tmpfile).annual_report
 
@@ -60,24 +59,46 @@ define PRINT_TIPS
 
 endef
 
+ifeq ($(MAKELEVEL),0)
+ifeq ($(filter nsteps,$(MAKECMDGOALS)),)
+nfiles := $(shell $(MAKE) nsteps GOALS="$(MAKECMDGOALS)" | tail -1)
+endif
+$(shell echo "$(nfiles)" > .make.progress)
+endif
+
+nfiles ?= 1
+define PROGRESS
+	printf "[%3d%%] \e[0;32m%s\\e[m\n" $$(($$(cat .make.progress | wc -l) * 100 /  $(1))) $(2)
+endef
+
 all: $(REPORT) FORCE
 	@$(MAKE) hint
 
+nsteps:
+	@$(MAKE) -n $(filter-out $@,$(GOALS)) | grep -c '>> .make.progress' || true
+
 %.csv: %.utf8.csv
+	@$(call PROGRESS,$(nfiles),"Converting to $@")
 	@iconv -f UTF-8 -t GB2312 $< | unix2dos > $@
+	@echo $@ >> .make.progress
 
 report.utf8.csv: $(csvs)
+	@printf "Detail analysing log saved \e[0;32m'%s'\e[0m\n" "$(VERBOSE_LOG)"
+	@$(call PROGRESS,$(nfiles),"Generating $@")
 	@echo $(REPORT_HEADER) | xargs printf "$(LINE_FORMAT)\n"  > $@
 	@$(MERGE) $^ >> $@
-	@printf "Detail Log is saved in \e[0;32m'%s'\e[0m\n" "$(VERBOSE_LOG)"
+	@echo $@ >> .make.progress
 
 %.csv: %.txt $(firstword $(MAKEFILE_LIST)) $(FILTER)
+	@$(call PROGRESS,$(nfiles),"Analysing $<")
 	@$(FILTER) $< $(VERBOSE_LOG) > $@
+	@echo $@ >> .make.progress
 
 .%.txt: %.pdf .pdf2txt.cfg
-	@printf "[%3d%%] \e[0;32mConverting %s\e[m\n" $$((($$(ls -1 .*.txt 2>/dev/null | wc -l) + 1) *100 / $(nfiles))) $<
+	@$(call PROGRESS,$(nfiles),"Converting $<")
 	@$(PDF2TXT) $(PDF_FLAGS) $< $@
 	@$(SED) -Ei $(PDF2TEXT_POST_SED) $@
+	@echo $@ >> .make.progress
 
 %.pdf:
 	@echo "No command to download $@"
