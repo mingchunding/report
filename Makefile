@@ -48,10 +48,10 @@ tmpfile	:= $(shell mktemp -u)
 VERBOSE_LOG ?= $(tmpfile).annual_report
 
 define CREATE_PDF2TXT_CFG
-	echo "%.txt: PDF_FLAGS := -q -layout -nopgbrk" && \
+	echo "%.txt: PDF_FLAGS := -q -layout" && \
 	echo "PDF2TEXT_POST_SED:='/^ {10,}|^[ 0-9\/]*\$$\$$/d'"
 endef
-$(shell test -f .pdf2txt.cfg || ($(call CREATE_PDF2TXT_CFG) > .pdf2txt.cfg))
+$(shell test -f .pdf2txt.cfg || (($(call CREATE_PDF2TXT_CFG)) > .pdf2txt.cfg))
 include .pdf2txt.cfg
 
 define PRINT_TIPS
