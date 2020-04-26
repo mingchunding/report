@@ -29,7 +29,9 @@ endif
 ifeq ($(FILTER),)
 FILTER := $(wildcard ./annual_report.sh)
 ifeq ($(MAKELEVEL),0)
+ifeq ($(filter nsteps,$(MAKECMDGOALS)),)
 $(warning $(FILTER) is used.)
+endif
 endif
 endif
 
@@ -72,7 +74,7 @@ define PROGRESS
 endef
 
 all: $(REPORT) FORCE
-	@$(MAKE) hint
+	@$(MAKE) --no-print-directory hint
 
 nsteps:
 	@$(MAKE) -n $(filter-out $@,$(GOALS)) | grep -c '>> .make.progress' || true
@@ -89,7 +91,7 @@ report.utf8.csv: $(csvs)
 	@$(MERGE) $^ >> $@
 	@echo $@ >> .make.progress
 
-%.csv: %.txt $(firstword $(MAKEFILE_LIST)) $(FILTER)
+%.csv: %.txt $(FILTER)
 	@$(call PROGRESS,$(nfiles),"Analysing $<")
 	@$(FILTER) $< $(VERBOSE_LOG) > $@
 	@echo $@ >> .make.progress
