@@ -275,6 +275,8 @@ function parser3()
 		}
 		:r1
 		=; w '${log}'
+		y/國運/国运/
+		w '${log}'
 		p;q
 	}' $1))
 
